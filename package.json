@@ -1,0 +1,38 @@
+{
+  "name": "simple-shop",
+  "version": "1.0.0",
+  "main": "src/app.ts",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node src/app.ts",
+    "dev": "bun --watch src/app.ts",
+    "build": "tsc",
+    "preview": "ts-node build/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/express": "^2.3.0",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/multipart": "^8.2.0",
+    "@fastify/mysql": "^4.2.0",
+    "@fastify/static": "^7.0.1",
+    "@prisma/client": "5.11.0",
+    "@types/ajv": "^1.0.0",
+    "ajv": "^8.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.26.2",
+    "fastify-multer": "^2.0.3"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^8.2.0",
+    "@types/node": "^20.11.30",
+    "nodemon": "^3.1.0",
+    "prisma": "^5.11.0",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.3",
+    "typesync": "^0.12.1"
+  }
+}
