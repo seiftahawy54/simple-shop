@@ -1,55 +1,73 @@
 import {FastifyReply, FastifyRequest} from "fastify";
-import prisma from "../utils/db.js";
-import {ImageUploadRequest} from "../../types/products.js";
-import {createCategoryBody} from "../../types/categories.js";
-import {ParentCategory} from "@prisma/client";
+import prisma from "../utils/db";
+import {CategoryImageUploadRequest, createCategoryBody} from "../../types/categories";
+import {Category, ParentCategory} from "@prisma/client";
+import {extractMimeType} from "../utils/helpers";
+import fs from "fs";
+import path from "node:path";
 
 const create = async (req: FastifyRequest<{
-    Body: createCategoryBody,
-    File: ImageUploadRequest
+    Body: createCategoryBody
 }>, reply: FastifyReply) => {
     try {
         let parentCategoryId = null;
         let itsParent: ParentCategory | null = null;
-        if (!req.body.isParent && !req.body.parentCategoryId) {
+        if (req.body.isParent && !req.body.parentCategoryId) {
             // create a root category
             return reply.status(400).send({message: 'Parent category is required'})
         }
         // create a parent category if isParent
         if (req.body.isParent) {
-            parentCategoryId = (await prisma.parentCategory.create({ data: {} })).id
+            parentCategoryId = (await prisma.parentCategory.create({ data: {
+                children: {
+
+                }
+                } })).id
         } else {
-            itsParent = await prisma.parentCategory.findMany({
+            itsParent = await prisma.parentCategory.findUnique({
                 where: {
                     id: req.body.parentCategoryId
                 }
             })
+
             if (!itsParent) {
                 return reply.status(400).send({message: 'Parent category not found'})
             }
         }
 
+        const mimeType = extractMimeType(req.body.picture);
+        const data = req.body.picture.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(data, 'base64');
+
+        const filename = `${crypto.randomUUID()}-${req.body.name.trim().split(' ').join('').toLowerCase()}.${mimeType}`; // Adjust as needed
+        fs.writeFileSync(path.resolve('uploads', filename), buffer);
+
         const createdCategory = await prisma.category.create({
             data: {
                 ...req.body,
-                parentCategoryId: req.body?.isParent ? parentCategoryId : null,
-                picture: process.env.NODE_ENV !== 'production' ? 'testing' : req.file?.filename
+                parentCategoryId: req.body.isParent ? parentCategoryId : req.body.parentCategoryId,
+                picture: `${process.env.STATIC_URL}/${filename}`,
             }
         });
 
         // Add to children
-        if (parentCategoryId && itsParent && itsParent?.children) {
-            await prisma.parentCategory.update({
+        if (!req.body.isParent && parentCategoryId && itsParent) {
+            const updatedParent = await prisma.parentCategory.update({
                 where: {
                     id: parentCategoryId
                 },
                 data: {
-                    children: [
-                        ...itsParent.children,
-                        createdCategory.id
-                    ]
+                    children: {
+                        connect: {
+                            id: createdCategory.id
+                        }
+                    }
                 }
             })
+
+            if (!updatedParent) {
+                return reply.status(400).send({message: 'Parent category not found'})
+            }
         }
 
         return reply.send(createdCategory)
@@ -60,12 +78,33 @@ const create = async (req: FastifyRequest<{
 
 const getAll = async (req: FastifyRequest, reply: FastifyReply) => {
     try {
-        const categories = await prisma.parentCategory.findMany({
-            // include: {
-            //     children: true
-            // }
+        const categories = await prisma.category.findMany({
+            where: {
+                isParent: true,
+                parentCategoryId: {
+                    not: null,
+                }
+            },
+            include: {
+                parentCategory: {
+                    include: {
+                        children: {
+                            where: {
+                                isParent: false
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!categories) {
+            return reply.status(404).send({message: 'Categories not found'})
+        }
+
+        return reply.send({
+            categories,
         })
-        return reply.send(categories)
     } catch (e) {
         return e
     }
@@ -73,12 +112,27 @@ const getAll = async (req: FastifyRequest, reply: FastifyReply) => {
 
 const getById = async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     try {
-        const product = await prisma.product.findUnique({
+        const category = await prisma.category.findUnique({
             where: {
                 id: req.params.id
+            },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                picture: true,
+                parentCategoryId: true,
+                isParent: true,
+                createdAt: true,
+                updatedAt: true,
             }
         })
-        return reply.send(product)
+
+        if (!category) {
+            return reply.status(404).send({message: 'Category not found'})
+        }
+
+        return reply.send(category)
     } catch (e) {
         return e
     }
@@ -86,10 +140,10 @@ const getById = async (req: FastifyRequest<{ Params: { id: string } }>, reply: F
 
 const update = async (req: FastifyRequest<{
     Params: { id: string },
-    Body: createProductBody
+    Body: createCategoryBody
 }>, reply: FastifyReply) => {
     try {
-        const product = await prisma.product.update({
+        const product = await prisma.category.update({
             where: {
                 id: req.params.id
             },
@@ -103,9 +157,44 @@ const update = async (req: FastifyRequest<{
     }
 }
 
+const addProductToCategory = async (req: FastifyRequest<{ Params: { id: string }, Body: { productId: string } }>, reply: FastifyReply) => {
+    try {
+        const product = await prisma.category.update({
+            where: {
+                id: req.params.id
+            },
+            data: {
+                products: {
+                    connect: {
+                        id: req.body.productId
+                    }
+                }
+            }
+        })
+        return reply.status(200).send(product)
+    } catch (e) {
+        return e
+    }
+}
+
+const deleteCategory = async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+        const category = await prisma.category.delete({
+            where: {
+                id: req.params.id
+            }
+        })
+        return reply.status(200).send(category)
+    } catch (e) {
+        return e
+    }
+}
+
 export default {
     create,
     getAll,
     getById,
-    update
+    update,
+    addProductToCategory,
+    deleteCategory
 }

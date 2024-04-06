@@ -1,9 +1,10 @@
 import {FastifyInstance, FastifyPluginOptions} from "fastify";
-import ProductsController from '../controllers/products.js'
-import ProductsSchema from '../validation/products.schema.js'
+import ProductsController from '../controllers/products'
+import ProductsSchema from '../validation/products.schema'
 
 export default async (fastify: FastifyInstance, options: FastifyPluginOptions) => {
     fastify.post('/', {
+        // preHandler: uploader.single('picture'),
         schema: {
             ...ProductsSchema.createProductSchema,
             response: {
@@ -14,6 +15,9 @@ export default async (fastify: FastifyInstance, options: FastifyPluginOptions) =
                         name: {type: 'string'},
                         description: {type: 'string'},
                         picture: {type: 'string'},
+                        createdAt: {type: 'string'},
+                        updatedAt: {type: 'string'},
+                        categoryId: {type: 'string'},
                     },
                 },
             }
@@ -46,4 +50,6 @@ export default async (fastify: FastifyInstance, options: FastifyPluginOptions) =
             },
         }
     }, ProductsController.update)
+    fastify.delete('/:id', ProductsController.deleteProduct)
+    fastify.get('/category/:id', ProductsController.getProductsByCategoryId)
 }

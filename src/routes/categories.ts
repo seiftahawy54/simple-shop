@@ -33,6 +33,26 @@ export default async (fastify: FastifyInstance, options: FastifyPluginOptions) =
                         name: {type: 'string'},
                         description: {type: 'string'},
                         picture: {type: 'string'},
+                        parentCategoryId: {type: ['string', 'null']},
+                        isParent: {type: 'boolean'},
+                        createdAt: {type: 'string'},
+                        updatedAt: {type: 'string'},
+                        children: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    id: {type: 'string'},
+                                    name: {type: 'string'},
+                                    description: {type: 'string'},
+                                    picture: {type: 'string'},
+                                    parentCategoryId: {type: ['string', 'null']},
+                                    isParent: {type: 'boolean'},
+                                    createdAt: {type: 'string'},
+                                    updatedAt: {type: 'string'},
+                                }
+                            }
+                        }
                     },
                 },
             }
@@ -46,8 +66,12 @@ export default async (fastify: FastifyInstance, options: FastifyPluginOptions) =
                     name: {type: 'string'},
                     description: {type: 'string'},
                     picture: {type: 'string'},
+                    parentCategoryId: {type: ['string', 'null']},
+                    isParent: {type: 'boolean'},
                 },
             },
         }
     }, CategoriesController.update)
+    fastify.delete('/:id', CategoriesController.deleteCategory)
+    fastify.put('/add-product/:id', CategoriesController.addProductToCategory)
 }

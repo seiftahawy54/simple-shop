@@ -1,20 +1,34 @@
 import {FastifyReply, FastifyRequest} from "fastify";
-import prisma from "../utils/db.js";
-import {createProductBody, ImageUploadRequest} from "../../types/products.js";
+import prisma from "../utils/db";
+import {createProductBody} from "../../types/products";
+import * as fs from "fs";
+import path from "node:path";
+import {extractMimeType} from "../utils/helpers";
 
-const create = async (req: FastifyRequest<{Body: createProductBody, File: ImageUploadRequest}>, reply: FastifyReply) => {
-   try {
-       const createdProduct = await prisma.product.create({
-           data: {
-               ...req.body,
-               picture: 'testing'
-           }
-       });
+const create = async (req: FastifyRequest<{ Body: createProductBody }>, reply: FastifyReply) => {
+    try {
+        const mimeType = extractMimeType(req.body.picture);
+        // Extract the image data from the Base64 string
+        const data = req.body.picture.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(data, 'base64');
 
-       return reply.send(createdProduct)
-   } catch (e) {
-       return e
-   }
+        // Save the image to a file
+        const filename = `${crypto.randomUUID()}-${req.body.name.trim().split(' ').join('').toLowerCase()}.${mimeType}`; // Adjust as needed
+        fs.writeFileSync(path.resolve('uploads', filename), buffer);
+
+        const createdProduct = await prisma.product.create({
+            data: {
+                ...req.body,
+                picture: `${process.env.STATIC_URL}/${filename}`,
+            }
+        });
+
+        return reply.send({
+            ...req.body
+        })
+    } catch (e) {
+        return e
+    }
 }
 
 const getAll = async (req: FastifyRequest, reply: FastifyReply) => {
@@ -26,7 +40,7 @@ const getAll = async (req: FastifyRequest, reply: FastifyReply) => {
     }
 }
 
-const getById = async (req: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) => {
+const getById = async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     try {
         const product = await prisma.product.findUnique({
             where: {
@@ -39,7 +53,10 @@ const getById = async (req: FastifyRequest<{Params: {id: string}}>, reply: Fasti
     }
 }
 
-const update = async (req: FastifyRequest<{Params: {id: string}, Body: createProductBody}>, reply: FastifyReply) => {
+const update = async (req: FastifyRequest<{
+    Params: { id: string },
+    Body: createProductBody
+}>, reply: FastifyReply) => {
     try {
         const product = await prisma.product.update({
             where: {
@@ -55,9 +72,42 @@ const update = async (req: FastifyRequest<{Params: {id: string}, Body: createPro
     }
 }
 
+const getProductsByCategoryId = async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+        const products = await prisma.product.findMany({
+            where: {
+                categoryId: req.params.id
+            }
+        })
+
+        if (!products || products.length === 0) {
+            return reply.status(404).send({message: 'Products not found'})
+        }
+
+        return reply.send(products)
+    } catch (e) {
+        return e
+    }
+}
+
+const deleteProduct = async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+        const product = await prisma.product.delete({
+            where: {
+                id: req.params.id
+            }
+        })
+        return reply.status(200).send(product)
+    } catch (e) {
+        return e
+    }
+}
+
 export default {
     create,
     getAll,
     getById,
-    update
+    update,
+    getProductsByCategoryId,
+    deleteProduct
 }

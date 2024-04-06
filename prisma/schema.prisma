@@ -20,7 +20,8 @@ model Product {
   name     String   @db.VarChar(255)
   description   String?
   picture String
-  category Category[]
+  caetgory Category @relation(fields: [categoryId], references: [id])
+  categoryId String
 }
 
 model Category {
@@ -30,8 +31,7 @@ model Category {
   name        String   @db.VarChar(255)
   description   String?
   picture String
-  product Product? @relation(fields: [productId], references: [id])
-  productId String?
+  products Product[]
   isParent Boolean @default(false)
   parentCategoryId String?
   parentCategory ParentCategory? @relation(fields: [parentCategoryId], references: [id])
@@ -41,5 +41,5 @@ model ParentCategory {
   id          String     @id @default(uuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  chidlren Category[]
+  children Category[]
 }

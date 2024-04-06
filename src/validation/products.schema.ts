@@ -1,11 +1,15 @@
-const createProductSchema = {
+import {FastifySchema} from "fastify";
+
+const createProductSchema: FastifySchema = {
     body: {
         type: 'object',
         properties: {
-            name: {type: 'string'},
-            description: {type: 'string'},
+            name: {type: 'string', minLength: 3},
+            description: {type: 'string', minLength: 3},
+            categoryId: {type: 'string', minLength: 3},
+            picture: {type: 'string'},
         },
-        required: ['name', 'description'],
+        required: ['name', 'description', 'categoryId', 'picture'],
     },
 }
 

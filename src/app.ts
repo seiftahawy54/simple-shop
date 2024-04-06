@@ -1,9 +1,11 @@
 import Fastify, {FastifyInstance} from 'fastify'
 import dotenv from 'dotenv'
 import multer from "fastify-multer";
+import cors from '@fastify/cors'
 import mySql from '@fastify/mysql';
-import AllRoutes from './routes'
-import path from "path";
+import AllRoutes from './routes';
+import fastifyStatic from "@fastify/static";
+import path from "node:path";
 
 dotenv.config()
 
@@ -11,22 +13,25 @@ const server: FastifyInstance = Fastify({
     logger: true,
 })
 
+server.register(
+    cors,
+    {
+        origin: true
+    }
+)
+
 // register mysql
 server
     .register(mySql, {
         connectionString: process.env.DATABASE_URL
     });
 
-const upload = multer({
-    storage: multer.diskStorage({
-        destination: path.resolve('uploads'),
-        filename: (req, file, cb) => {
-            cb(null, file.originalname)
-        }
-    })
-})
-
 server.register(multer.contentParser)
+
+server.register(fastifyStatic, {
+    root: path.resolve('uploads'),
+    prefix: '/static',
+})
 
 server.register(AllRoutes, {
     prefix: '/api',
@@ -52,3 +57,5 @@ start()
     .catch(err => {
         console.log(err)
     })
+
+export default start()

@@ -6,10 +6,17 @@ const createCategoriesSchema = {
             description: {type: 'string'},
             isParent: {type: 'boolean'},
             parentCategoryId: {type: 'string', nullable: true},
-            picture: {type: 'string'},
+            // picture: {type: 'string'},
+            children: {type: 'array', items: {type: 'string'}}
         },
-        required: ['name', 'description'],
+        required: ['name', 'description', /*'picture'*/],
     },
+    file: {
+        type: 'object',
+        properties: {
+            picture: {type: 'string'},
+        }
+    }
 }
 
 export default {
