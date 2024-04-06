@@ -8,6 +8,7 @@
     "dev": "bun --watch src/app.ts",
     "build": "prisma generate && tsc",
     "preview": "ts-node build/app.js",
+    "migrate": "prisma migrate dev",
     "prisma": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
