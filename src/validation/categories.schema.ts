@@ -5,11 +5,11 @@ const createCategoriesSchema = {
             name: {type: 'string'},
             description: {type: 'string'},
             isParent: {type: 'boolean'},
-            parentCategoryId: {type: 'string', nullable: true},
-            // picture: {type: 'string'},
+            parentCategoryId: {type: 'string'},
+            picture: {type: 'string'},
             children: {type: 'array', items: {type: 'string'}}
         },
-        required: ['name', 'description', /*'picture'*/],
+        required: ['name', 'description', 'picture'],
     },
     file: {
         type: 'object',

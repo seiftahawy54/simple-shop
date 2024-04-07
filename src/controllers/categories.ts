@@ -12,17 +12,32 @@ const create = async (req: FastifyRequest<{
     try {
         let parentCategoryId = null;
         let itsParent: ParentCategory | null = null;
-        if (req.body.isParent && !req.body.parentCategoryId) {
+        if (!req.body.isParent && !req.body.parentCategoryId) {
             // create a root category
             return reply.status(400).send({message: 'Parent category is required'})
         }
         // create a parent category if isParent
         if (req.body.isParent) {
-            parentCategoryId = (await prisma.parentCategory.create({ data: {
-                children: {
+            let children: Category[] = []
 
+            if ((req.body.children as string[])?.length > 9) {
+                const childrenArray = (req.body.children as string[]).map(async (child) => {
+                    return prisma.category.findUnique({
+                        where: {
+                            id: child
+                        }
+                    });
+                })
+                children = await Promise.all(childrenArray) as Category[]
+            }
+
+            parentCategoryId = (await prisma.parentCategory.create({
+                data: {
+                    children: {
+                        connect: children
+                    }
                 }
-                } })).id
+            })).id
         } else {
             itsParent = await prisma.parentCategory.findUnique({
                 where: {
@@ -44,10 +59,13 @@ const create = async (req: FastifyRequest<{
 
         const createdCategory = await prisma.category.create({
             data: {
-                ...req.body,
-                parentCategoryId: req.body.isParent ? parentCategoryId : req.body.parentCategoryId,
+                name: req.body.name,
+                description: req.body.description,
+                isParent: req.body.isParent,
                 picture: `${process.env.STATIC_URL}/${filename}`,
-            }
+                parentCategoryId:
+                    req.body.isParent ? parentCategoryId : req.body.parentCategoryId,
+            },
         });
 
         // Add to children
@@ -157,7 +175,10 @@ const update = async (req: FastifyRequest<{
     }
 }
 
-const addProductToCategory = async (req: FastifyRequest<{ Params: { id: string }, Body: { productId: string } }>, reply: FastifyReply) => {
+const addProductToCategory = async (req: FastifyRequest<{
+    Params: { id: string },
+    Body: { productId: string }
+}>, reply: FastifyReply) => {
     try {
         const product = await prisma.category.update({
             where: {
